@@ -1,0 +1,106 @@
+=== AI Provider for Infomaniak (Unofficial) ===
+Contributors: custom
+Tags: ai, infomaniak, llama, mistral, presets, image-generation
+Requires at least: 6.9
+Tested up to: 7.0
+Stable tag: 1.0.0
+Requires PHP: 7.4
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Unofficial AI Provider for Infomaniak AI Tools for the PHP AI Client SDK.
+
+== Description ==
+
+This plugin provides Infomaniak AI integration for the PHP AI Client SDK. It enables WordPress sites to use open-source models hosted in Switzerland via Infomaniak's OpenAI-compatible API.
+
+**This plugin is not officially maintained by Infomaniak.** It is developed independently by a partner developer.
+
+**Features:**
+
+* Text generation with open-source models (Llama, Mistral, DeepSeek, Qwen)
+* Image generation support
+* Async batch operations (status polling + result download)
+* JSON structured output support
+* Function calling support
+* Usage tracking with per-preset cost attribution
+* Automatic provider registration
+* Models hosted in Switzerland for data sovereignty
+* Dynamic model discovery from the Infomaniak API (LLM and image models)
+* Connector icon on the Settings > Connectors page
+* **AI Presets SDK** -- abstract class for building reusable AI commands with PHP templates, auto-registered as WordPress Abilities (REST API + MCP)
+
+Available models are dynamically discovered from the Infomaniak API, including text generation models (Llama, Mistral, Mixtral, DeepSeek, Qwen) and image generation models.
+
+**AI Presets:**
+
+This plugin includes `BasePreset`, an abstract class that lets any plugin create reusable AI commands without boilerplate. Each preset combines a prompt template, system instruction, AI settings, and input validation into a single class. Presets auto-register as WordPress Abilities, making them available via REST API and MCP for AI agents.
+
+Create a preset by extending `BasePreset` in your plugin, add a PHP template for the prompt, and call `registerAsAbility()`. No need to manually build prompts, configure the AI client, or register REST endpoints -- the framework handles it all.
+
+See the [GitHub README](https://github.com/MarJC5/ai-provider-for-infomaniak) for a full guide with code examples.
+
+**Requirements:**
+
+* PHP 7.4 or higher
+* For WordPress 6.9, the [wordpress/php-ai-client](https://github.com/WordPress/php-ai-client) package must be installed
+* For WordPress 7.0 and above, no additional changes are required
+* An Infomaniak account with an AI Tools product
+* Infomaniak API key
+
+== Installation ==
+
+1. Upload the plugin files to `/wp-content/plugins/ai-provider-for-infomaniak/`
+2. Activate the plugin through the 'Plugins' menu in WordPress
+3. Configure your Infomaniak API key via **Settings > Connectors**
+4. Configure your Product ID via **Settings > Infomaniak AI**
+
+== Frequently Asked Questions ==
+
+= How do I get an Infomaniak API key? =
+
+Visit the [Infomaniak Manager](https://manager.infomaniak.com/v3/ng/products/cloud/ai-tools) to create an AI Tools product and generate an API key.
+
+= Where do I find my Product ID? =
+
+Your Product ID is available in the Infomaniak Manager under AI Tools. It can be set via **Settings > Infomaniak AI**, the `INFOMANIAK_AI_PRODUCT_ID` constant, or the `infomaniak_ai_product_id` filter.
+
+= Does this plugin work without the PHP AI Client? =
+
+No, this plugin requires the PHP AI Client plugin to be installed and activated. It provides the Infomaniak-specific implementation that the PHP AI Client uses.
+
+= What models are available? =
+
+Models are dynamically discovered from the Infomaniak API. Text generation models typically include Llama 3, Mistral, Mixtral, DeepSeek, and Qwen. Image generation models are also available. All models are hosted in Switzerland.
+
+= Where is my data processed? =
+
+All AI processing happens on Infomaniak's infrastructure in Switzerland, ensuring data sovereignty and compliance with European data protection standards.
+
+= What are AI Presets? =
+
+Presets are reusable AI commands built on the `BasePreset` abstract class. Instead of writing prompt strings, configuring the AI client, and registering REST endpoints manually for each AI feature, you extend `BasePreset`, create a PHP template, and the framework handles execution and ability registration. Each preset becomes a WordPress Ability, discoverable via REST API and MCP.
+
+= Can I create my own presets in another plugin? =
+
+Yes. Extend `WordPress\InfomaniakAiProvider\Presets\BasePreset` from any plugin. The base class auto-detects your plugin's directory to find templates. Place your PHP templates in `your-plugin/templates/presets/` and system prompts in `your-plugin/templates/presets/system/`. Use the `infomaniak_ai_presets` filter to register them.
+
+== Changelog ==
+
+= 1.0.0 =
+
+* Initial release
+* Text generation with OpenAI-compatible Chat Completions API
+* Image generation support
+* Async batch operations with status polling and result download
+* Dynamic model discovery from the Infomaniak API (LLM and image models)
+* Product ID configuration via option, constant, or filter
+* API key management via WordPress Connectors
+* Connector icon on the Settings > Connectors page
+* Models cache with automatic refresh
+* AI Presets SDK: `BasePreset` abstract class for building reusable AI commands
+* PHP template engine for prompt rendering
+* System prompt templates (content editor, SEO expert, accessibility)
+* Auto-detection of plugin root for cross-plugin preset support
+* Auto-registration as WordPress Abilities (REST API + MCP)
+* Extensible via `infomaniak_ai_presets` filter

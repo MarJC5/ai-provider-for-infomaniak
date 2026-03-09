@@ -1,0 +1,174 @@
+<?php
+
+declare(strict_types=1);
+
+namespace WordPress\InfomaniakAiProvider\Provider;
+
+use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Common\Exception\RuntimeException;
+use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiProvider;
+use WordPress\AiClient\Providers\ApiBasedImplementation\ListModelsApiBasedProviderAvailability;
+use WordPress\AiClient\Providers\Contracts\ModelMetadataDirectoryInterface;
+use WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface;
+use WordPress\AiClient\Providers\Contracts\ProviderOperationsHandlerInterface;
+use WordPress\AiClient\Providers\Contracts\ProviderWithOperationsHandlerInterface;
+use WordPress\AiClient\Providers\DTO\ProviderMetadata;
+use WordPress\AiClient\Providers\Enums\ProviderTypeEnum;
+use WordPress\AiClient\Providers\Http\Enums\RequestAuthenticationMethod;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
+use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
+use WordPress\InfomaniakAiProvider\Metadata\InfomaniakModelMetadataDirectory;
+use WordPress\InfomaniakAiProvider\Models\InfomaniakImageGenerationModel;
+use WordPress\InfomaniakAiProvider\Models\InfomaniakTextGenerationModel;
+use WordPress\InfomaniakAiProvider\Operations\InfomaniakOperationsHandler;
+
+/**
+ * Class for the AI Provider for Infomaniak.
+ *
+ * Provides access to Infomaniak's AI services which offer open-source models
+ * (Llama, Mistral, DeepSeek, Granite) via an OpenAI-compatible API hosted in Switzerland.
+ *
+ * @since 1.0.0
+ */
+class InfomaniakProvider extends AbstractApiProvider implements ProviderWithOperationsHandlerInterface
+{
+    /**
+     * @var InfomaniakOperationsHandler|null Cached operations handler instance.
+     */
+    private static ?InfomaniakOperationsHandler $operationsHandlerInstance = null;
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0.0
+     */
+    protected static function baseUrl(): string
+    {
+        return 'https://api.infomaniak.com';
+    }
+
+    /**
+     * Gets the Infomaniak AI product ID from configuration.
+     *
+     * Checks in order:
+     * 1. The `infomaniak_ai_product_id` filter
+     * 2. The `INFOMANIAK_AI_PRODUCT_ID` constant
+     * 3. The `infomaniak_ai_product_id` WordPress option
+     *
+     * @since 1.0.0
+     *
+     * @return string The product ID, or empty string if not configured.
+     */
+    public static function getProductId(): string
+    {
+        /**
+         * Filters the Infomaniak AI product ID.
+         *
+         * @since 1.0.0
+         *
+         * @param string|null $product_id The product ID, or null to use default sources.
+         */
+        $productId = apply_filters('infomaniak_ai_product_id', null);
+        if ($productId !== null) {
+            return (string) $productId;
+        }
+
+        if (defined('INFOMANIAK_AI_PRODUCT_ID')) {
+            return (string) INFOMANIAK_AI_PRODUCT_ID;
+        }
+
+        return (string) get_option('infomaniak_ai_product_id', '');
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0.0
+     */
+    protected static function createModel(
+        ModelMetadata $modelMetadata,
+        ProviderMetadata $providerMetadata
+    ): ModelInterface {
+        $capabilities = $modelMetadata->getSupportedCapabilities();
+        foreach ($capabilities as $capability) {
+            if ($capability->isImageGeneration()) {
+                return new InfomaniakImageGenerationModel($modelMetadata, $providerMetadata);
+            }
+            if ($capability->isTextGeneration()) {
+                return new InfomaniakTextGenerationModel($modelMetadata, $providerMetadata);
+            }
+        }
+
+        throw new RuntimeException(
+            sprintf(
+                /* translators: %s: comma-separated list of capability names */
+                __('Unsupported model capabilities: %s', 'ai-provider-for-infomaniak'),
+                implode(', ', $capabilities)
+            )
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0.0
+     */
+    protected static function createProviderMetadata(): ProviderMetadata
+    {
+        $providerMetadataArgs = [
+            'infomaniak',
+            'Infomaniak',
+            ProviderTypeEnum::cloud(),
+            'https://manager.infomaniak.com/v3/ng/products/cloud/ai-tools',
+            RequestAuthenticationMethod::apiKey(),
+        ];
+        // Provider description support was added in 1.2.0.
+        if (version_compare(AiClient::VERSION, '1.2.0', '>=')) {
+            if (function_exists('__')) {
+                $providerMetadataArgs[] = __(
+                    'Text and image generation with open-source models. Supports async batch operations.',
+                    'ai-provider-for-infomaniak'
+                );
+            } else {
+                $providerMetadataArgs[] = 'Text and image generation with open-source models. Supports async batch operations.';
+            }
+        }
+        return new ProviderMetadata(...$providerMetadataArgs);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0.0
+     */
+    protected static function createProviderAvailability(): ProviderAvailabilityInterface
+    {
+        return new ListModelsApiBasedProviderAvailability(
+            static::modelMetadataDirectory()
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0.0
+     */
+    protected static function createModelMetadataDirectory(): ModelMetadataDirectoryInterface
+    {
+        return new InfomaniakModelMetadataDirectory();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * Returns the operations handler for managing async batch operations.
+     *
+     * @since 1.0.0
+     */
+    public static function operationsHandler(): ProviderOperationsHandlerInterface
+    {
+        if (self::$operationsHandlerInstance === null) {
+            self::$operationsHandlerInstance = new InfomaniakOperationsHandler();
+        }
+        return self::$operationsHandlerInstance;
+    }
+}
