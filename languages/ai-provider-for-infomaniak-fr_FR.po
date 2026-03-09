@@ -24,11 +24,6 @@ msgstr "Fournisseur IA pour Infomaniak"
 msgid "https://www.infomaniak.com/en/hosting/ai-tools"
 msgstr "https://www.infomaniak.com/fr/hebergement/ai-services"
 
-#. Description of the plugin
-#: plugin.php
-msgid "AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek) hosted in Switzerland."
-msgstr "Fournisseur IA pour Infomaniak pour le client IA WordPress. Donne accès à des modèles open source (Llama, Mistral, DeepSeek) hébergés en Suisse."
-
 #. Author of the plugin
 #: plugin.php
 msgid "Custom"
@@ -103,20 +98,25 @@ msgstr "Le téléchargement du lot « %s » a retourné un contenu vide."
 msgid "The generated text."
 msgstr "Le texte généré."
 
-#: src/Presets/BasePreset.php:350
+#: src/Presets/BasePreset.php:382
 msgid "AI Client is not available."
 msgstr "Le client IA n'est pas disponible."
 
-#: src/Presets/BasePreset.php:368
+#: src/Presets/BasePreset.php:400
 msgid "Failed to render prompt template."
 msgstr "Échec du rendu du modèle de prompt."
 
 #. translators: %s: comma-separated list of capability names
-#: src/Provider/InfomaniakProvider.php:104
+#: src/Provider/InfomaniakProvider.php:128
 #, php-format
 msgid "Unsupported model capabilities: %s"
 msgstr "Capacités de modèle non prises en charge : %s"
 
-#: src/Provider/InfomaniakProvider.php:127
+#: src/Provider/InfomaniakProvider.php:151
 msgid "Text and image generation with open-source models. Supports async batch operations."
 msgstr "Génération de texte et d'images avec des modèles open source. Prend en charge les opérations asynchrones par lots."
+
+#. Description of the plugin
+#: plugin.php
+msgid "AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland."
+msgstr "Fournisseur IA pour Infomaniak pour le client IA WordPress. Fournit l'accès à des modèles open source (Llama, Mistral, DeepSeek, Qwen) hébergés en Suisse."

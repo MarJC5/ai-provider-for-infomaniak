@@ -18,13 +18,14 @@ use WordPress\AiClient\Events\AfterGenerateResultEvent;
 class UsageTracker
 {
     /**
-     * The name of the currently executing preset, or null.
+     * Stack of preset names for nested tracking.
      *
-     * PHP is single-threaded, so a static variable is safe for context tracking.
+     * Supports nested preset calls (e.g. PresetA calling PresetB)
+     * by pushing/popping instead of overwriting a single value.
      *
-     * @var string|null
+     * @var string[]
      */
-    private static $currentPreset = null;
+    private static array $presetStack = [];
 
     /**
      * Registers the usage tracking hook.
@@ -52,19 +53,33 @@ class UsageTracker
      */
     public static function setCurrentPreset(string $presetName): void
     {
-        self::$currentPreset = $presetName;
+        self::$presetStack[] = $presetName;
     }
 
     /**
      * Clears the current preset context.
      *
      * Called by BasePreset::execute() in a finally block.
+     * Pops the stack so outer presets resume their context.
      *
      * @since 1.0.0
      */
     public static function clearCurrentPreset(): void
     {
-        self::$currentPreset = null;
+        array_pop(self::$presetStack);
+    }
+
+    /**
+     * Returns the current preset name, or null if none.
+     *
+     * @since 1.0.0
+     *
+     * @return string|null
+     */
+    public static function getCurrentPreset(): ?string
+    {
+        $current = end(self::$presetStack);
+        return $current !== false ? $current : null;
     }
 
     /**
@@ -89,7 +104,7 @@ class UsageTracker
             'provider_id' => $providerMeta->getId(),
             'model_id' => $modelMeta->getId(),
             'model_name' => $modelMeta->getName(),
-            'preset_name' => self::$currentPreset,
+            'preset_name' => self::getCurrentPreset(),
             'prompt_tokens' => $tokenUsage->getPromptTokens(),
             'completion_tokens' => $tokenUsage->getCompletionTokens(),
             'total_tokens' => $tokenUsage->getTotalTokens(),

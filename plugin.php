@@ -3,13 +3,13 @@
 /**
  * Plugin Name: AI Provider for Infomaniak
  * Plugin URI: https://www.infomaniak.com/en/hosting/ai-tools
- * Description: AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek) hosted in Switzerland.
+ * Description: AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland.
  * Requires at least: 6.9
- * Requires PHP: 7.4
+ * Requires PHP: 8.0
  * Version: 1.0.0
  * Author: Custom
  * License: GPL-2.0-or-later
- * License URI: https://spdx.org/licenses/GPL-2.0-or-later.html
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: ai-provider-for-infomaniak
  *
  * @package WordPress\InfomaniakAiProvider
@@ -217,9 +217,12 @@ function refresh_models_cache(bool $force = false): array
     }
 
     // Read the API key from the connector setting.
-    remove_filter('option_connectors_ai_infomaniak_api_key', '_wp_connectors_mask_api_key');
-    $apiKey = get_option('connectors_ai_infomaniak_api_key', '');
-    add_filter('option_connectors_ai_infomaniak_api_key', '_wp_connectors_mask_api_key');
+    try {
+        remove_filter('option_connectors_ai_infomaniak_api_key', '_wp_connectors_mask_api_key');
+        $apiKey = get_option('connectors_ai_infomaniak_api_key', '');
+    } finally {
+        add_filter('option_connectors_ai_infomaniak_api_key', '_wp_connectors_mask_api_key');
+    }
 
     if (empty($apiKey)) {
         return [];

@@ -21,6 +21,11 @@ spl_autoload_register(static function (string $class): void {
     }
 
     $relativeClass = substr($class, $len);
+
+    if (strpos($relativeClass, '..') !== false) {
+        return;
+    }
+
     $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
 
     if (file_exists($file)) {

@@ -26,7 +26,7 @@ use WordPress\InfomaniakAiProvider\Operations\InfomaniakOperationsHandler;
  * Class for the AI Provider for Infomaniak.
  *
  * Provides access to Infomaniak's AI services which offer open-source models
- * (Llama, Mistral, DeepSeek, Granite) via an OpenAI-compatible API hosted in Switzerland.
+ * (Llama, Mistral, DeepSeek, Qwen) via an OpenAI-compatible API hosted in Switzerland.
  *
  * @since 1.0.0
  */
@@ -69,14 +69,38 @@ class InfomaniakProvider extends AbstractApiProvider implements ProviderWithOper
          */
         $productId = apply_filters('infomaniak_ai_product_id', null);
         if ($productId !== null) {
-            return (string) $productId;
+            return self::sanitizeProductId((string) $productId);
         }
 
         if (defined('INFOMANIAK_AI_PRODUCT_ID')) {
-            return (string) INFOMANIAK_AI_PRODUCT_ID;
+            return self::sanitizeProductId((string) INFOMANIAK_AI_PRODUCT_ID);
         }
 
-        return (string) get_option('infomaniak_ai_product_id', '');
+        return self::sanitizeProductId((string) get_option('infomaniak_ai_product_id', ''));
+    }
+
+    /**
+     * Sanitizes a product ID to prevent path injection.
+     *
+     * Only allows alphanumeric characters, dashes, and underscores.
+     * Returns an empty string for invalid values.
+     *
+     * @since 1.0.0
+     *
+     * @param string $productId The raw product ID.
+     * @return string The sanitized product ID, or empty string if invalid.
+     */
+    private static function sanitizeProductId(string $productId): string
+    {
+        if ($productId === '') {
+            return '';
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $productId)) {
+            return '';
+        }
+
+        return $productId;
     }
 
     /**
@@ -102,7 +126,7 @@ class InfomaniakProvider extends AbstractApiProvider implements ProviderWithOper
             sprintf(
                 /* translators: %s: comma-separated list of capability names */
                 __('Unsupported model capabilities: %s', 'ai-provider-for-infomaniak'),
-                implode(', ', $capabilities)
+                implode(', ', array_map('strval', $capabilities))
             )
         );
     }

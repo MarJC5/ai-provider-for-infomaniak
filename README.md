@@ -1,16 +1,17 @@
 # AI Provider for Infomaniak (Unofficial)
 
-An unofficial AI Provider for [Infomaniak AI Tools](https://www.infomaniak.com/en/hosting/ai-tools) for the [PHP AI Client](https://github.com/WordPress/php-ai-client) SDK. Works as both a Composer package and a WordPress plugin.
+An unofficial AI Provider for [Infomaniak AI Tools](https://www.infomaniak.com/en/hosting/ai-tools) for the [PHP AI Client](https://github.com/WordPress/php-ai-client) SDK.
 
 > **Note:** This plugin is not officially maintained by Infomaniak. It is developed independently by a partner developer.
 
-Provides access to open-source models hosted in Switzerland via Infomaniak's OpenAI-compatible API. Supports text generation, image generation, async batch operations, and usage tracking with per-preset cost attribution.
+Provides access to open-source models hosted in Switzerland via Infomaniak's OpenAI-compatible API. Supports text generation, image generation, function calling, async batch operations, and usage tracking with per-preset cost attribution.
 
 ## Requirements
 
-- PHP 7.4 or higher
-- When using with WordPress, requires WordPress 7.0 or higher
-    - If using an older WordPress release, the [wordpress/php-ai-client](https://github.com/WordPress/php-ai-client) package must be installed
+- PHP 8.0 or higher
+- WordPress 6.9 or higher
+    - WordPress 6.9 requires the [wordpress/php-ai-client](https://github.com/WordPress/php-ai-client) package to be installed separately
+    - WordPress 7.0+ includes the PHP AI Client natively
 - An Infomaniak account with an AI Tools product
 
 ## Installation
@@ -22,12 +23,6 @@ Provides access to open-source models hosted in Switzerland via Infomaniak's Ope
 3. Activate the plugin through the WordPress admin
 4. Configure your API key in **Settings > Connectors**
 5. Configure your Product ID in **Settings > Infomaniak AI**
-
-### As a Composer Package
-
-```bash
-composer require wordpress/ai-provider-for-infomaniak
-```
 
 ## Configuration
 
@@ -89,23 +84,6 @@ if ( ! is_wp_error( $file ) ) {
 }
 ```
 
-### As a Standalone Package
-
-```php
-use WordPress\AiClient\AiClient;
-use WordPress\InfomaniakAiProvider\Provider\InfomaniakProvider;
-
-// Register the provider
-$registry = AiClient::defaultRegistry();
-$registry->registerProvider( InfomaniakProvider::class );
-
-// Generate text
-$result = AiClient::prompt( 'Explain quantum computing' )
-    ->usingProvider( 'infomaniak' )
-    ->generateTextResult();
-
-echo $result->toText();
-```
 
 ## AI Presets
 
@@ -168,7 +146,7 @@ add_action( 'wp_abilities_api_init', function() {
 ```
 
 The preset is now available as:
-- **REST API**: `POST /wp-abilities/v1/abilities/infomaniak/summarize/run`
+- **REST API**: `POST /wp-json/wp-abilities/v1/abilities/infomaniak/summarize/run`
 - **MCP tool**: automatically exposed to AI agents
 - **PHP**: `$preset->execute(['content' => '...'])`
 
@@ -193,7 +171,7 @@ The preset is now available as:
 | `provider()` | `'infomaniak'` | AI provider ID |
 | `category()` | `'content'` | Ability category slug |
 | `permission()` | `'edit_posts'` | Required WordPress capability |
-| `annotations()` | `readonly, non-destructive` | MCP behavioral annotations |
+| `annotations()` | `readonly, non-destructive, idempotent` | MCP behavioral annotations |
 | `templateData($input)` | passthrough | Transform input before rendering |
 | `modelPreference()` | `null` | Preferred model ID (SDK picks if null) |
 | `modelType()` | `'llm'` | Model type: `'llm'` or `'image'` |

@@ -235,11 +235,14 @@ abstract class BasePreset
     /**
      * Renders a PHP template file with the given data.
      *
+     * Uses a static closure to isolate the template scope, preventing
+     * variable collisions between extract()'d data and method parameters.
+     *
      * @since 1.0.0
      *
      * @param string $template Path to the template file.
      * @param array  $data     Variables to extract into the template scope.
-     * @return string Rendered template output.
+     * @return string Rendered template output, or empty string on failure.
      */
     protected function render(string $template, array $data): string
     {
@@ -247,11 +250,20 @@ abstract class BasePreset
             return '';
         }
 
-        ob_start();
-        // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
-        extract($data, EXTR_SKIP);
-        include $template;
-        return trim((string) ob_get_clean());
+        $__render = static function (string $__file, array $__data): string {
+            ob_start();
+            try {
+                // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
+                extract($__data, EXTR_SKIP);
+                include $__file;
+                return trim((string) ob_get_clean());
+            } catch (\Throwable $__e) {
+                ob_end_clean();
+                return '';
+            }
+        };
+
+        return $__render($template, $data);
     }
 
     /**
@@ -269,10 +281,20 @@ abstract class BasePreset
     }
 
     /**
+     * Cached template paths keyed by child class name.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    private static array $templatePathCache = [];
+
+    /**
      * Returns the base path to the templates directory.
      *
      * Auto-detects the plugin directory of the concrete child class,
      * so presets in any plugin will find their own templates.
+     * The result is cached per class to avoid repeated directory walks.
      *
      * @since 1.0.0
      *
@@ -280,6 +302,12 @@ abstract class BasePreset
      */
     protected function templatesPath(): string
     {
+        $classKey = static::class;
+
+        if (isset(self::$templatePathCache[$classKey])) {
+            return self::$templatePathCache[$classKey];
+        }
+
         $reflector = new \ReflectionClass(static::class);
         $childFile = $reflector->getFileName();
 
@@ -291,14 +319,18 @@ abstract class BasePreset
                 // Quick check for plugin header without reading the full file.
                 $header = file_get_contents($file, false, null, 0, 8192);
                 if ($header !== false && str_contains($header, 'Plugin Name:')) {
-                    return $dir . '/templates/presets';
+                    $result = $dir . '/templates/presets';
+                    self::$templatePathCache[$classKey] = $result;
+                    return $result;
                 }
             }
             $dir = dirname($dir);
         }
 
         // Fallback: relative to the child class, go up to src/../templates/presets.
-        return dirname($childFile, 3) . '/templates/presets';
+        $result = dirname($childFile, 3) . '/templates/presets';
+        self::$templatePathCache[$classKey] = $result;
+        return $result;
     }
 
     /**
@@ -407,9 +439,13 @@ abstract class BasePreset
             // Decode JSON responses.
             if ($outputSchema !== null) {
                 $decoded = json_decode($result, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    return $decoded;
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return new \WP_Error(
+                        'json_decode_error',
+                        sprintf('Failed to decode AI response as JSON: %s', json_last_error_msg())
+                    );
                 }
+                return $decoded;
             }
 
             return $result;
