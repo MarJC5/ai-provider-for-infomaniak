@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace WordPress\InfomaniakAiProvider;
 
 use WordPress\AiClient\AiClient;
+use WordPress\InfomaniakAiProvider\Commands\CommandLoader;
 use WordPress\InfomaniakAiProvider\Provider\InfomaniakProvider;
 use WordPress\InfomaniakAiProvider\Memory\MemorySchema;
 use WordPress\InfomaniakAiProvider\Usage\UsageSchema;
@@ -442,3 +443,6 @@ function print_connector_icon_script(): void
 }
 
 add_action('admin_enqueue_scripts', __NAMESPACE__ . '\\enqueue_connector_icon', 20);
+
+// Register markdown commands as WordPress Abilities.
+add_action('wp_abilities_api_init', [CommandLoader::class, 'registerAll']);

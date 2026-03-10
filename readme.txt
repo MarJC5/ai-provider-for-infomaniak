@@ -1,6 +1,6 @@
 === AI Provider for Infomaniak (Unofficial) ===
 Contributors: custom
-Tags: ai, infomaniak, llama, mistral, presets, image-generation, conversation-memory
+Tags: ai, infomaniak, llama, mistral, presets, image-generation, conversation-memory, markdown-commands
 Requires at least: 6.9
 Tested up to: 7.0
 Stable tag: 1.0.0
@@ -30,8 +30,13 @@ This plugin provides Infomaniak AI integration for the PHP AI Client SDK. It ena
 * Dynamic model discovery from the Infomaniak API (LLM and image models)
 * Connector icon on the Settings > Connectors page
 * **AI Presets SDK** -- abstract class for building reusable AI commands with PHP templates, auto-registered as WordPress Abilities (REST API + MCP)
+* **Markdown Commands** -- create AI commands with simple markdown files, no PHP required
 
 Available models are dynamically discovered from the Infomaniak API, including text generation models (Llama, Mistral, Mixtral, DeepSeek, Qwen) and image generation models.
+
+**Markdown Commands:**
+
+Create AI commands without writing PHP. Drop a `.md` file in `wp-content/ai-commands/` with a YAML frontmatter header and a prompt template using `{{variable}}` placeholders. The command is auto-discovered and registered as a WordPress Ability. Bundled commands include `summarize` and `translate`.
 
 **AI Presets:**
 
@@ -78,6 +83,10 @@ Models are dynamically discovered from the Infomaniak API. Text generation model
 
 All AI processing happens on Infomaniak's infrastructure in Switzerland, ensuring data sovereignty and compliance with European data protection standards.
 
+= What are Markdown Commands? =
+
+Markdown commands are AI commands defined as simple `.md` files. Each file has a YAML frontmatter section for configuration (description, temperature, system prompt, etc.) and a body with `{{variable}}` placeholders for the prompt template. Place them in `wp-content/ai-commands/` or your theme's `ai-commands/` directory. They are auto-discovered and registered as WordPress Abilities.
+
 = What are AI Presets? =
 
 Presets are reusable AI commands built on the `BasePreset` abstract class. Instead of writing prompt strings, configuring the AI client, and registering REST endpoints manually for each AI feature, you extend `BasePreset`, create a PHP template, and the framework handles execution and ability registration. Each preset becomes a WordPress Ability, discoverable via REST API and MCP.
@@ -108,3 +117,10 @@ Yes. Extend `WordPress\InfomaniakAiProvider\Presets\BasePreset` from any plugin.
 * Memory compaction via `CompactingStrategy` (background summarization, zero latency)
 * Usage tracking with real token counts from the SDK
 * Extensible via `infomaniak_ai_presets` filter
+* Markdown Commands: create AI commands with `.md` files, no PHP required
+* Auto-discovery of command files from theme, plugin, and custom directories
+* YAML-like frontmatter parser (no external dependencies)
+* `{{variable}}` interpolation for prompt templates
+* Auto-generated input JSON Schema from template variables
+* Example commands: `summarize` and `translate`
+* `infomaniak_ai_commands_dirs` filter for custom command directories

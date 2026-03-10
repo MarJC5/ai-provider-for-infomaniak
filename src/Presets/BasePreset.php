@@ -431,6 +431,49 @@ abstract class BasePreset
     }
 
     /**
+     * Builds the user prompt text from templates and data.
+     *
+     * Override this in subclasses that use a different rendering mechanism
+     * (e.g. markdown templates with {{variable}} interpolation).
+     *
+     * @since 1.0.0
+     *
+     * @param array $data Template data from templateData().
+     * @return string The rendered prompt text.
+     */
+    protected function buildPromptText(array $data): string
+    {
+        return $this->render(
+            $this->templatesPath() . '/' . $this->templateName() . '.php',
+            $data
+        );
+    }
+
+    /**
+     * Builds the system instruction text from templates and data.
+     *
+     * Override this in subclasses that provide system prompts differently
+     * (e.g. inline from frontmatter configuration).
+     *
+     * @since 1.0.0
+     *
+     * @param array $data Template data from templateData().
+     * @return string|null The system instruction text, or null if none.
+     */
+    protected function buildSystemText(array $data): ?string
+    {
+        $systemTemplate = $this->systemTemplateName();
+        if ($systemTemplate === null) {
+            return null;
+        }
+        $text = $this->render(
+            $this->templatesPath() . '/system/' . $systemTemplate . '.php',
+            $data
+        );
+        return !empty($text) ? $text : null;
+    }
+
+    /**
      * Executes the preset with the given input.
      *
      * Builds the prompt from templates, configures the AI client,
@@ -467,10 +510,7 @@ abstract class BasePreset
             $data = $this->templateData($input);
 
             // Render user prompt template.
-            $promptText = $this->render(
-                $this->templatesPath() . '/' . $this->templateName() . '.php',
-                $data
-            );
+            $promptText = $this->buildPromptText($data);
 
             if (empty($promptText)) {
                 return new \WP_Error(
@@ -492,15 +532,9 @@ abstract class BasePreset
             }
 
             // Add system instruction if defined.
-            $systemTemplate = $this->systemTemplateName();
-            if ($systemTemplate !== null) {
-                $systemText = $this->render(
-                    $this->templatesPath() . '/system/' . $systemTemplate . '.php',
-                    $data
-                );
-                if (!empty($systemText)) {
-                    $builder->usingSystemInstruction($systemText);
-                }
+            $systemText = $this->buildSystemText($data);
+            if (!empty($systemText)) {
+                $builder->usingSystemInstruction($systemText);
             }
 
             // Inject conversation history.

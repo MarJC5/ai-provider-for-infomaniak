@@ -85,6 +85,95 @@ $mimeType = $file->getMimeType();  // image/png
 ```
 
 
+## Markdown Commands
+
+Markdown commands let site admins create AI commands without writing PHP. Each command is a `.md` file with YAML frontmatter (configuration) and a body (prompt template).
+
+### Quick start
+
+Create a file in `wp-content/ai-commands/translate.md`:
+
+```markdown
+---
+description: Translates text to a target language.
+max_tokens: 2000
+temperature: 0.3
+system: |
+  You are a professional translator.
+  Preserve formatting, tone, and meaning.
+  Return only the translated text, no commentary.
+---
+Translate the following text to {{language}}:
+
+{{content}}
+```
+
+That's it. The command is auto-discovered and registered as a WordPress Ability:
+- **REST API**: `POST /wp-json/wp-abilities/v1/abilities/infomaniak/translate/run`
+- **MCP tool**: automatically exposed to AI agents
+- **Input**: `{"language": "English", "content": "Bonjour le monde."}`
+
+### How it works
+
+- **Frontmatter** defines the command configuration (description, temperature, system prompt, etc.)
+- **Body** is the prompt template with `{{variable}}` placeholders
+- **Variables** are auto-detected from `{{variable}}` patterns and used to generate the input JSON Schema
+- **Name** is derived from the filename (e.g., `translate.md` becomes `translate`)
+- Commands inherit all preset features: usage tracking, conversation memory, compaction
+
+### Command directories
+
+Files are scanned from these directories (first match wins on name conflicts):
+
+1. Directories added via the `infomaniak_ai_commands_dirs` filter
+2. Active plugins: `{plugin}/ai-commands/`
+3. Active theme: `{theme}/ai-commands/`
+
+```php
+// Add a custom directory
+add_filter( 'infomaniak_ai_commands_dirs', function ( array $dirs ): array {
+    $dirs[] = WP_CONTENT_DIR . '/my-ai-commands';
+    return $dirs;
+});
+```
+
+### Frontmatter reference
+
+| Field | Default | Description |
+|---|---|---|
+| `description` | **required** | What the command does |
+| `label` | derived from filename | Human-readable label |
+| `category` | `content` | Ability category slug |
+| `permission` | `edit_posts` | Required WordPress capability |
+| `temperature` | `0.7` | Generation temperature |
+| `max_tokens` | `1000` | Maximum response tokens |
+| `model` | `null` (SDK picks) | Preferred model ID |
+| `model_type` | `llm` | `llm` or `image` |
+| `system` | `null` | System instruction (supports multi-line with `\|`) |
+| `conversational` | `false` | Enable conversation memory |
+| `provider` | `infomaniak` | AI provider ID |
+
+### Example commands
+
+See the [`examples/commands/`](examples/commands/) directory for copy-paste-ready command files:
+
+- **[summarize.md](examples/commands/summarize.md)** -- Summarizes content concisely
+- **[translate.md](examples/commands/translate.md)** -- Translates text to a target language
+
+These files are not auto-loaded. Copy them to your theme's `ai-commands/` directory or a custom directory registered via the `infomaniak_ai_commands_dirs` filter.
+
+### Markdown commands vs PHP presets
+
+| | Markdown Commands | PHP Presets |
+|---|---|---|
+| **Audience** | Site admins, content creators | Developers |
+| **Syntax** | Markdown + `{{variables}}` | PHP classes + templates |
+| **Complexity** | Simple text prompts | Full control (data fetching, validation, custom execution) |
+| **Features** | Text generation, system prompts, conversation memory | Everything (image generation, JSON output, custom logic) |
+| **Location** | `.md` files in `ai-commands/` | PHP classes in plugins |
+
+Use markdown commands for simple, template-based AI prompts. Use PHP presets when you need data fetching, custom validation, structured output, or image generation.
+
 ## AI Presets
 
 This plugin provides `BasePreset`, an abstract class for building reusable AI commands. Each preset is a self-contained unit combining a prompt template, system instruction, AI configuration, and input validation -- all auto-registered as a [WordPress Ability](https://developer.wordpress.org/abilities/) discoverable via REST API and MCP.
@@ -178,13 +267,13 @@ The preset is now available as:
 
 ### Examples
 
-See the [`examples/`](examples/) directory for complete, copy-paste-ready presets:
+See the [`examples/presets/`](examples/presets/) directory for complete, copy-paste-ready presets:
 
-- **[basic-preset.php](examples/basic-preset.php)** -- Minimal preset with a prompt template and system instruction
-- **[json-output-preset.php](examples/json-output-preset.php)** -- Structured JSON output with `outputSchema()`
-- **[post-aware-preset.php](examples/post-aware-preset.php)** -- Fetches WordPress post data via `templateData()` and validates with a custom `execute()` override
-- **[image-preset.php](examples/image-preset.php)** -- Image generation with a custom `execute()` override using `generateImage()` and `ModelConfig`
-- **[conversational-preset.php](examples/conversational-preset.php)** -- Multi-turn chat with conversation memory and optional compaction
+- **[basic-preset.php](examples/presets/basic-preset.php)** -- Minimal preset with a prompt template and system instruction
+- **[json-output-preset.php](examples/presets/json-output-preset.php)** -- Structured JSON output with `outputSchema()`
+- **[post-aware-preset.php](examples/presets/post-aware-preset.php)** -- Fetches WordPress post data via `templateData()` and validates with a custom `execute()` override
+- **[image-preset.php](examples/presets/image-preset.php)** -- Image generation with a custom `execute()` override using `generateImage()` and `ModelConfig`
+- **[conversational-preset.php](examples/presets/conversational-preset.php)** -- Multi-turn chat with conversation memory and optional compaction
 
 ## Conversation Memory
 
