@@ -248,6 +248,7 @@ The preset is now available as:
 - **Image generation** -- Override `execute()` to call `generateImage()` instead of `generateText()`. Use `ModelConfig` to set orientation and other image options. Override `modelType()` to return `'image'`.
 - **Model preference** -- Call `setModelPreference()` at runtime to override the model, or override `modelPreference()` for a default.
 - **Provider override** -- Override `provider()` to use a different AI provider (defaults to `'infomaniak'`).
+- **Agent mode** -- Override `tools()` to provide tools and `execute()` automatically uses the `AgentLoop` for function calling iteration.
 - **Extensible** -- Use the `infomaniak_ai_presets` filter to add or remove presets from any plugin.
 
 ### Overridable methods
@@ -264,6 +265,8 @@ The preset is now available as:
 | `templateData($input)` | passthrough | Transform input before rendering |
 | `modelPreference()` | `null` | Preferred model ID (SDK picks if null) |
 | `modelType()` | `'llm'` | Model type: `'llm'` or `'image'` |
+| `tools()` | `[]` | Tools for agent mode (function calling) |
+| `maxAgentIterations()` | `10` | Max tool-calling rounds |
 
 ### Examples
 
@@ -274,6 +277,119 @@ See the [`examples/presets/`](examples/presets/) directory for complete, copy-pa
 - **[post-aware-preset.php](examples/presets/post-aware-preset.php)** -- Fetches WordPress post data via `templateData()` and validates with a custom `execute()` override
 - **[image-preset.php](examples/presets/image-preset.php)** -- Image generation with a custom `execute()` override using `generateImage()` and `ModelConfig`
 - **[conversational-preset.php](examples/presets/conversational-preset.php)** -- Multi-turn chat with conversation memory and optional compaction
+- **[agent-preset.php](examples/presets/agent-preset.php)** -- Agent with function calling tools that search and read WordPress content
+
+## Agent Orchestrator
+
+The `AgentLoop` class provides a function calling loop that lets AI models use tools autonomously. The model receives tool declarations, decides when to call them, and the loop handles execution and iteration until the model produces a final response.
+
+### With a preset
+
+Override `tools()` in your preset to enable agent mode automatically:
+
+```php
+use WordPress\InfomaniakAiProvider\Agent\Tool;
+use WordPress\InfomaniakAiProvider\Presets\BasePreset;
+
+class ResearchPreset extends BasePreset
+{
+    protected function tools(): array
+    {
+        return [
+            new Tool(
+                'search_posts',
+                'Search WordPress posts by keyword',
+                [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => 'string', 'description' => 'Search keywords'],
+                    ],
+                    'required' => ['query'],
+                ],
+                function (array $args): array {
+                    $posts = get_posts(['s' => $args['query'], 'posts_per_page' => 5]);
+                    return array_map(fn($p) => [
+                        'id' => $p->ID,
+                        'title' => $p->post_title,
+                        'excerpt' => wp_trim_words($p->post_content, 50),
+                    ], $posts);
+                }
+            ),
+        ];
+    }
+
+    protected function maxAgentIterations(): int { return 5; }
+    // ...
+}
+```
+
+When `tools()` returns tools, `execute()` uses `AgentLoop` instead of a single AI call.
+
+### Standalone usage
+
+```php
+use WordPress\InfomaniakAiProvider\Agent\AgentLoop;
+use WordPress\InfomaniakAiProvider\Agent\Tool;
+use WordPress\InfomaniakAiProvider\Agent\ToolRegistry;
+
+$registry = new ToolRegistry();
+$registry->register(new Tool(
+    'get_weather',
+    'Get current weather for a city',
+    [
+        'type' => 'object',
+        'properties' => [
+            'city' => ['type' => 'string'],
+        ],
+        'required' => ['city'],
+    ],
+    fn(array $args) => ['temperature' => 22, 'condition' => 'sunny']
+));
+
+$loop = new AgentLoop($registry, [
+    'provider'       => 'infomaniak',
+    'system'         => 'You are a helpful assistant. Use tools when needed.',
+    'max_iterations' => 5,
+]);
+
+$result = $loop->run('What is the weather in Zurich?');
+
+echo $result->getText();           // Final text response
+echo $result->getIterationCount(); // Number of tool-calling rounds
+echo $result->hasToolCalls();      // true if tools were used
+```
+
+### How it works
+
+```
+User prompt + tool declarations → API
+    ↓
+Model response
+    ├── finish_reason: stop → return final text
+    └── finish_reason: tool_calls → extract calls
+                                      ↓
+                                Execute tools via ToolRegistry
+                                      ↓
+                                Send results back → API
+                                      ↓
+                                Model response → repeat (max N iterations)
+```
+
+### AgentLoop options
+
+| Option | Default | Description |
+|---|---|---|
+| `provider` | `'infomaniak'` | AI provider ID |
+| `model` | `null` | Preferred model ID |
+| `temperature` | `0.7` | Generation temperature |
+| `max_tokens` | `4096` | Maximum response tokens |
+| `system` | `null` | System instruction |
+| `max_iterations` | `10` | Maximum tool-calling rounds |
+
+### Hooks
+
+- `infomaniak_ai_agent_tool_called` (action) -- fires after each tool execution, receives `($functionCall, $toolResult, $agentLoop)`
+- `infomaniak_ai_agent_step` (action) -- fires after each iteration, receives `($steps, $messages, $agentLoop)`
 
 ## Conversation Memory
 

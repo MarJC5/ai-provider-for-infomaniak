@@ -1,6 +1,6 @@
 === AI Provider for Infomaniak (Unofficial) ===
 Contributors: custom
-Tags: ai, infomaniak, llama, mistral, presets, image-generation, conversation-memory, markdown-commands
+Tags: ai, infomaniak, llama, mistral, presets, image-generation, conversation-memory, markdown-commands, agent, function-calling
 Requires at least: 6.9
 Tested up to: 7.0
 Stable tag: 1.0.0
@@ -31,6 +31,7 @@ This plugin provides Infomaniak AI integration for the PHP AI Client SDK. It ena
 * Connector icon on the Settings > Connectors page
 * **AI Presets SDK** -- abstract class for building reusable AI commands with PHP templates, auto-registered as WordPress Abilities (REST API + MCP)
 * **Markdown Commands** -- create AI commands with simple markdown files, no PHP required
+* **Agent Orchestrator** -- function calling loop that lets models use tools autonomously
 
 Available models are dynamically discovered from the Infomaniak API, including text generation models (Llama, Mistral, Mixtral, DeepSeek, Qwen) and image generation models.
 
@@ -45,6 +46,10 @@ This plugin includes `BasePreset`, an abstract class that lets any plugin create
 Create a preset by extending `BasePreset` in your plugin, add a PHP template for the prompt, and call `registerAsAbility()`. No need to manually build prompts, configure the AI client, or register REST endpoints -- the framework handles it all.
 
 See the [GitHub README](https://github.com/MarJC5/ai-provider-for-infomaniak) for a full guide with code examples.
+
+**Agent Orchestrator:**
+
+The `AgentLoop` class provides a function calling loop for agentic AI behavior. Define tools with a name, description, JSON Schema parameters, and a PHP handler. The model decides when to call tools, the loop executes them and feeds results back, repeating until the model produces a final response. Presets can enable agent mode by overriding the `tools()` method. The loop can also be used standalone without presets.
 
 **Requirements:**
 
@@ -124,3 +129,7 @@ Yes. Extend `WordPress\InfomaniakAiProvider\Presets\BasePreset` from any plugin.
 * Auto-generated input JSON Schema from template variables
 * Example commands: `summarize` and `translate`
 * `infomaniak_ai_commands_dirs` filter for custom command directories
+* Agent Orchestrator: `AgentLoop` class for function calling loops
+* `Tool` and `ToolRegistry` classes for defining and managing tools
+* Automatic agent mode in presets via `tools()` override
+* `infomaniak_ai_agent_tool_called` and `infomaniak_ai_agent_step` hooks

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace WordPress\InfomaniakAiProvider\Presets;
 
 use WordPress\AiClient\AiClient;
+use WordPress\InfomaniakAiProvider\Agent\AgentLoop;
+use WordPress\InfomaniakAiProvider\Agent\ToolRegistry;
 use WordPress\InfomaniakAiProvider\Memory\CompactingStrategy;
 use WordPress\InfomaniakAiProvider\Memory\MemoryStore;
 use WordPress\InfomaniakAiProvider\Memory\MemoryStrategy;
@@ -301,6 +303,36 @@ abstract class BasePreset
     }
 
     /**
+     * Returns tools available to this preset for agent behavior.
+     *
+     * Override in subclasses to provide tools. When tools are defined,
+     * execute() automatically uses the AgentLoop for function calling
+     * instead of a single AI call.
+     *
+     * @since 1.0.0
+     *
+     * @return \WordPress\InfomaniakAiProvider\Agent\Tool[]
+     */
+    protected function tools(): array
+    {
+        return [];
+    }
+
+    /**
+     * Maximum number of agent loop iterations (tool-calling rounds).
+     *
+     * Only relevant when tools() returns tools.
+     *
+     * @since 1.0.0
+     *
+     * @return int
+     */
+    protected function maxAgentIterations(): int
+    {
+        return 10;
+    }
+
+    /**
      * Renders a PHP template file with the given data.
      *
      * Uses a static closure to isolate the template scope, preventing
@@ -519,50 +551,79 @@ abstract class BasePreset
                 );
             }
 
-            // Build the prompt via AiClient::prompt() which correctly
-            // passes the event dispatcher for usage tracking hooks.
-            $builder = AiClient::prompt($promptText)
-                ->usingProvider($this->provider())
-                ->usingTemperature($this->temperature())
-                ->usingMaxTokens($this->maxTokens());
-
-            $modelPref = $this->modelPreference();
-            if ($modelPref !== null) {
-                $builder->usingModelPreference($modelPref);
-            }
-
             // Add system instruction if defined.
             $systemText = $this->buildSystemText($data);
-            if (!empty($systemText)) {
-                $builder->usingSystemInstruction($systemText);
-            }
 
             // Inject conversation history.
+            $historyMessages = [];
             if ($isConversational && $conversationId !== null) {
                 $historyMessages = $this->memoryStrategy()->loadMessages(
                     $conversationId,
                     $this->historySize(),
                     get_current_user_id()
                 );
-
-                if (!empty($historyMessages)) {
-                    $builder->withHistory(...$historyMessages);
-                }
             }
 
-            // Configure JSON output if schema is defined.
-            $outputSchema = $this->outputSchema();
-            if ($outputSchema !== null) {
-                $builder->asJsonResponse($outputSchema);
-            }
+            // Check if this preset has tools for agent behavior.
+            $presetTools = $this->tools();
 
             try {
-                $result = $builder->generateText();
+                if (!empty($presetTools)) {
+                    // Agent mode: use the function calling loop.
+                    $registry = new ToolRegistry();
+                    foreach ($presetTools as $tool) {
+                        $registry->register($tool);
+                    }
+
+                    $loop = new AgentLoop($registry, [
+                        'provider'       => $this->provider(),
+                        'model'          => $this->modelPreference(),
+                        'temperature'    => $this->temperature(),
+                        'max_tokens'     => $this->maxTokens(),
+                        'system'         => $systemText,
+                        'max_iterations' => $this->maxAgentIterations(),
+                    ]);
+
+                    $agentResult = $loop->run($promptText, $historyMessages);
+                    $result = $agentResult->getText();
+                } else {
+                    // Standard mode: single AI call.
+                    $builder = AiClient::prompt($promptText)
+                        ->usingProvider($this->provider())
+                        ->usingTemperature($this->temperature())
+                        ->usingMaxTokens($this->maxTokens());
+
+                    $modelPref = $this->modelPreference();
+                    if ($modelPref !== null) {
+                        $builder->usingModelPreference($modelPref);
+                    }
+
+                    if (!empty($systemText)) {
+                        $builder->usingSystemInstruction($systemText);
+                    }
+
+                    if (!empty($historyMessages)) {
+                        $builder->withHistory(...$historyMessages);
+                    }
+
+                    // Configure JSON output if schema is defined.
+                    $outputSchema = $this->outputSchema();
+                    if ($outputSchema !== null) {
+                        $builder->asJsonResponse($outputSchema);
+                    }
+
+                    $result = $builder->generateText();
+                }
             } catch (\Throwable $e) {
                 return new \WP_Error(
                     'ai_generation_error',
                     $e->getMessage()
                 );
+            }
+
+            // Configure JSON output for response handling.
+            if (!isset($outputSchema)) {
+                $outputSchema = $this->outputSchema();
             }
 
             // Read real token usage from the SDK (populated by UsageTracker hook).
