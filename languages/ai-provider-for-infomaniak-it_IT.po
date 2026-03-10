@@ -1,15 +1,16 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: AI Provider for Infomaniak 1.0.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-provider-for-infomaniak\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-provider-for-"
+"infomaniak\n"
+"POT-Creation-Date: 2026-03-10T07:08:33+00:00\n"
+"PO-Revision-Date: 2026-03-09 15:25+0000\n"
 "Last-Translator: \n"
 "Language-Team: Italian\n"
+"Language: it_IT\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-03-09T15:25:58+00:00\n"
-"PO-Revision-Date: 2026-03-09 15:25+0000\n"
-"Language: it_IT\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ai-provider-for-infomaniak\n"
@@ -24,45 +25,67 @@ msgstr "Provider IA per Infomaniak"
 msgid "https://www.infomaniak.com/en/hosting/ai-tools"
 msgstr "https://www.infomaniak.com/it/hosting/ai-tools"
 
+#. Description of the plugin
+#: plugin.php
+msgid ""
+"AI Provider for Infomaniak for the WordPress AI Client. Provides access to "
+"open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland."
+msgstr ""
+"Provider IA per Infomaniak per il client IA di WordPress. Fornisce accesso a "
+"modelli open source (Llama, Mistral, DeepSeek, Qwen) ospitati in Svizzera."
+
 #. Author of the plugin
 #: plugin.php
 msgid "Custom"
 msgstr "Custom"
 
-#: plugin.php:106
+#: plugin.php:120
 msgid "Infomaniak AI Configuration"
 msgstr "Configurazione Infomaniak AI"
 
-#: plugin.php:109
-msgid "Configure your Infomaniak AI product settings. Your API token is managed via Settings > Connectors."
-msgstr "Configura le impostazioni del tuo prodotto Infomaniak AI. Il tuo token API è gestito tramite Impostazioni > Connettori."
+#: plugin.php:123
+msgid ""
+"Configure your Infomaniak AI product settings. Your API token is managed via "
+"Settings > Connectors."
+msgstr ""
+"Configura le impostazioni del tuo prodotto Infomaniak AI. Il tuo token API è "
+"gestito tramite Impostazioni > Connettori."
 
-#: plugin.php:120
+#: plugin.php:134
 msgid "Product ID"
 msgstr "ID prodotto"
 
-#: plugin.php:130
+#: plugin.php:144
 msgid "Currently set via the INFOMANIAK_AI_PRODUCT_ID constant."
 msgstr "Attualmente impostato tramite la costante INFOMANIAK_AI_PRODUCT_ID."
 
-#: plugin.php:135
+#: plugin.php:149
 msgid "Currently set via the infomaniak_ai_product_id filter."
 msgstr "Attualmente impostato tramite il filtro infomaniak_ai_product_id."
 
-#: plugin.php:140
-msgid "Your Infomaniak AI product ID. Find it in your Infomaniak manager at AI Tools."
-msgstr "Il tuo ID prodotto Infomaniak AI. Trovalo nel tuo manager Infomaniak sotto AI Tools."
+#: plugin.php:154
+msgid ""
+"Your Infomaniak AI product ID. Find it in your Infomaniak manager at AI "
+"Tools."
+msgstr ""
+"Il tuo ID prodotto Infomaniak AI. Trovalo nel tuo manager Infomaniak sotto "
+"AI Tools."
 
-#: plugin.php:162
-#: plugin.php:163
+#: plugin.php:176 plugin.php:177
 msgid "Infomaniak AI"
 msgstr "Infomaniak AI"
 
 #: src/Models/InfomaniakImageGenerationModel.php:42
 #: src/Models/InfomaniakTextGenerationModel.php:42
 #: src/Operations/InfomaniakOperationsHandler.php:177
-msgid "Infomaniak AI product ID is not configured. Set it via Settings > Infomaniak AI, the INFOMANIAK_AI_PRODUCT_ID constant, or the infomaniak_ai_product_id filter."
-msgstr "L'ID prodotto Infomaniak AI non è configurato. Impostalo tramite Impostazioni > Infomaniak AI, la costante INFOMANIAK_AI_PRODUCT_ID o il filtro infomaniak_ai_product_id."
+msgid ""
+"Infomaniak AI product ID is not configured. Set it via Settings > Infomaniak "
+"AI, the INFOMANIAK_AI_PRODUCT_ID constant, or the infomaniak_ai_product_id "
+"filter."
+msgstr ""
+"L'ID prodotto Infomaniak AI non è configurato. Impostalo tramite "
+"Impostazioni > Infomaniak AI, la costante INFOMANIAK_AI_PRODUCT_ID o il "
+"filtro infomaniak_ai_product_id."
 
 #. translators: %s: batch ID
 #: src/Operations/InfomaniakOperationsHandler.php:82
@@ -80,7 +103,8 @@ msgstr "Il batch «%s» ha restituito una risposta non valida."
 #: src/Operations/InfomaniakOperationsHandler.php:130
 #, php-format
 msgid "Batch \"%s\" not found or result not yet available."
-msgstr "Il batch «%s» non è stato trovato o il risultato non è ancora disponibile."
+msgstr ""
+"Il batch «%s» non è stato trovato o il risultato non è ancora disponibile."
 
 #. translators: 1: batch ID, 2: HTTP status code
 #: src/Operations/InfomaniakOperationsHandler.php:140
@@ -94,15 +118,19 @@ msgstr "Impossibile scaricare il risultato del batch «%1$s». Stato HTTP: %2$d.
 msgid "Batch \"%s\" download returned empty content."
 msgstr "Il download del batch «%s» ha restituito un contenuto vuoto."
 
-#: src/Presets/BasePreset.php:177
+#: src/Presets/BasePreset.php:180
 msgid "The generated text."
 msgstr "Il testo generato."
 
-#: src/Presets/BasePreset.php:382
+#: src/Presets/BasePreset.php:296
+msgid "Conversation identifier. Auto-generated if omitted."
+msgstr "Identificatore di conversazione. Generato automaticamente se omesso."
+
+#: src/Presets/BasePreset.php:448
 msgid "AI Client is not available."
 msgstr "Il client IA non è disponibile."
 
-#: src/Presets/BasePreset.php:400
+#: src/Presets/BasePreset.php:476
 msgid "Failed to render prompt template."
 msgstr "Impossibile eseguire il rendering del modello di prompt."
 
@@ -113,10 +141,9 @@ msgid "Unsupported model capabilities: %s"
 msgstr "Capacità del modello non supportate: %s"
 
 #: src/Provider/InfomaniakProvider.php:151
-msgid "Text and image generation with open-source models. Supports async batch operations."
-msgstr "Generazione di testo e immagini con modelli open source. Supporta operazioni batch asincrone."
-
-#. Description of the plugin
-#: plugin.php
-msgid "AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland."
-msgstr "Provider IA per Infomaniak per il client IA di WordPress. Fornisce accesso a modelli open source (Llama, Mistral, DeepSeek, Qwen) ospitati in Svizzera."
+msgid ""
+"Text and image generation with open-source models. Supports async batch "
+"operations."
+msgstr ""
+"Generazione di testo e immagini con modelli open source. Supporta operazioni "
+"batch asincrone."

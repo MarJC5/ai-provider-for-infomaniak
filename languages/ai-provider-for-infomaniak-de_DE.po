@@ -1,15 +1,16 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: AI Provider for Infomaniak 1.0.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-provider-for-infomaniak\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-provider-for-"
+"infomaniak\n"
+"POT-Creation-Date: 2026-03-10T07:08:33+00:00\n"
+"PO-Revision-Date: 2026-03-09 15:25+0000\n"
 "Last-Translator: \n"
 "Language-Team: German\n"
+"Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-03-09T15:25:58+00:00\n"
-"PO-Revision-Date: 2026-03-09 15:25+0000\n"
-"Language: de_DE\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ai-provider-for-infomaniak\n"
@@ -24,45 +25,68 @@ msgstr "KI-Anbieter für Infomaniak"
 msgid "https://www.infomaniak.com/en/hosting/ai-tools"
 msgstr "https://www.infomaniak.com/de/hosting/ai-tools"
 
+#. Description of the plugin
+#: plugin.php
+msgid ""
+"AI Provider for Infomaniak for the WordPress AI Client. Provides access to "
+"open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland."
+msgstr ""
+"KI-Anbieter für Infomaniak für den WordPress-KI-Client. Bietet Zugang zu "
+"Open-Source-Modellen (Llama, Mistral, DeepSeek, Qwen), die in der Schweiz "
+"gehostet werden."
+
 #. Author of the plugin
 #: plugin.php
 msgid "Custom"
 msgstr "Custom"
 
-#: plugin.php:106
+#: plugin.php:120
 msgid "Infomaniak AI Configuration"
 msgstr "Infomaniak AI Konfiguration"
 
-#: plugin.php:109
-msgid "Configure your Infomaniak AI product settings. Your API token is managed via Settings > Connectors."
-msgstr "Konfigurieren Sie Ihre Infomaniak AI Produkteinstellungen. Ihr API-Token wird unter Einstellungen > Konnektoren verwaltet."
+#: plugin.php:123
+msgid ""
+"Configure your Infomaniak AI product settings. Your API token is managed via "
+"Settings > Connectors."
+msgstr ""
+"Konfigurieren Sie Ihre Infomaniak AI Produkteinstellungen. Ihr API-Token "
+"wird unter Einstellungen > Konnektoren verwaltet."
 
-#: plugin.php:120
+#: plugin.php:134
 msgid "Product ID"
 msgstr "Produkt-ID"
 
-#: plugin.php:130
+#: plugin.php:144
 msgid "Currently set via the INFOMANIAK_AI_PRODUCT_ID constant."
 msgstr "Derzeit über die Konstante INFOMANIAK_AI_PRODUCT_ID festgelegt."
 
-#: plugin.php:135
+#: plugin.php:149
 msgid "Currently set via the infomaniak_ai_product_id filter."
 msgstr "Derzeit über den Filter infomaniak_ai_product_id festgelegt."
 
-#: plugin.php:140
-msgid "Your Infomaniak AI product ID. Find it in your Infomaniak manager at AI Tools."
-msgstr "Ihre Infomaniak AI Produkt-ID. Sie finden sie in Ihrem Infomaniak Manager unter AI Tools."
+#: plugin.php:154
+msgid ""
+"Your Infomaniak AI product ID. Find it in your Infomaniak manager at AI "
+"Tools."
+msgstr ""
+"Ihre Infomaniak AI Produkt-ID. Sie finden sie in Ihrem Infomaniak Manager "
+"unter AI Tools."
 
-#: plugin.php:162
-#: plugin.php:163
+#: plugin.php:176 plugin.php:177
 msgid "Infomaniak AI"
 msgstr "Infomaniak AI"
 
 #: src/Models/InfomaniakImageGenerationModel.php:42
 #: src/Models/InfomaniakTextGenerationModel.php:42
 #: src/Operations/InfomaniakOperationsHandler.php:177
-msgid "Infomaniak AI product ID is not configured. Set it via Settings > Infomaniak AI, the INFOMANIAK_AI_PRODUCT_ID constant, or the infomaniak_ai_product_id filter."
-msgstr "Die Infomaniak AI Produkt-ID ist nicht konfiguriert. Legen Sie sie unter Einstellungen > Infomaniak AI, über die Konstante INFOMANIAK_AI_PRODUCT_ID oder den Filter infomaniak_ai_product_id fest."
+msgid ""
+"Infomaniak AI product ID is not configured. Set it via Settings > Infomaniak "
+"AI, the INFOMANIAK_AI_PRODUCT_ID constant, or the infomaniak_ai_product_id "
+"filter."
+msgstr ""
+"Die Infomaniak AI Produkt-ID ist nicht konfiguriert. Legen Sie sie unter "
+"Einstellungen > Infomaniak AI, über die Konstante INFOMANIAK_AI_PRODUCT_ID "
+"oder den Filter infomaniak_ai_product_id fest."
 
 #. translators: %s: batch ID
 #: src/Operations/InfomaniakOperationsHandler.php:82
@@ -80,29 +104,38 @@ msgstr "Stapelverarbeitung „%s\" hat eine ungültige Antwort zurückgegeben."
 #: src/Operations/InfomaniakOperationsHandler.php:130
 #, php-format
 msgid "Batch \"%s\" not found or result not yet available."
-msgstr "Stapelverarbeitung „%s\" nicht gefunden oder Ergebnis noch nicht verfügbar."
+msgstr ""
+"Stapelverarbeitung „%s\" nicht gefunden oder Ergebnis noch nicht verfügbar."
 
 #. translators: 1: batch ID, 2: HTTP status code
 #: src/Operations/InfomaniakOperationsHandler.php:140
 #, php-format
 msgid "Failed to download batch \"%1$s\" result. HTTP status: %2$d."
-msgstr "Fehler beim Herunterladen des Ergebnisses der Stapelverarbeitung „%1$s\". HTTP-Status: %2$d."
+msgstr ""
+"Fehler beim Herunterladen des Ergebnisses der Stapelverarbeitung „%1$s\". "
+"HTTP-Status: %2$d."
 
 #. translators: %s: batch ID
 #: src/Operations/InfomaniakOperationsHandler.php:153
 #, php-format
 msgid "Batch \"%s\" download returned empty content."
-msgstr "Der Download der Stapelverarbeitung „%s\" hat einen leeren Inhalt zurückgegeben."
+msgstr ""
+"Der Download der Stapelverarbeitung „%s\" hat einen leeren Inhalt "
+"zurückgegeben."
 
-#: src/Presets/BasePreset.php:177
+#: src/Presets/BasePreset.php:180
 msgid "The generated text."
 msgstr "Der generierte Text."
 
-#: src/Presets/BasePreset.php:382
+#: src/Presets/BasePreset.php:296
+msgid "Conversation identifier. Auto-generated if omitted."
+msgstr "Konversationskennung. Wird automatisch generiert, wenn nicht angegeben."
+
+#: src/Presets/BasePreset.php:448
 msgid "AI Client is not available."
 msgstr "Der KI-Client ist nicht verfügbar."
 
-#: src/Presets/BasePreset.php:400
+#: src/Presets/BasePreset.php:476
 msgid "Failed to render prompt template."
 msgstr "Fehler beim Rendern der Prompt-Vorlage."
 
@@ -113,10 +146,9 @@ msgid "Unsupported model capabilities: %s"
 msgstr "Nicht unterstützte Modellfähigkeiten: %s"
 
 #: src/Provider/InfomaniakProvider.php:151
-msgid "Text and image generation with open-source models. Supports async batch operations."
-msgstr "Text- und Bildgenerierung mit Open-Source-Modellen. Unterstützt asynchrone Stapelverarbeitungen."
-
-#. Description of the plugin
-#: plugin.php
-msgid "AI Provider for Infomaniak for the WordPress AI Client. Provides access to open-source models (Llama, Mistral, DeepSeek, Qwen) hosted in Switzerland."
-msgstr "KI-Anbieter für Infomaniak für den WordPress-KI-Client. Bietet Zugang zu Open-Source-Modellen (Llama, Mistral, DeepSeek, Qwen), die in der Schweiz gehostet werden."
+msgid ""
+"Text and image generation with open-source models. Supports async batch "
+"operations."
+msgstr ""
+"Text- und Bildgenerierung mit Open-Source-Modellen. Unterstützt asynchrone "
+"Stapelverarbeitungen."

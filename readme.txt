@@ -1,6 +1,6 @@
 === AI Provider for Infomaniak (Unofficial) ===
 Contributors: custom
-Tags: ai, infomaniak, llama, mistral, presets, image-generation
+Tags: ai, infomaniak, llama, mistral, presets, image-generation, conversation-memory
 Requires at least: 6.9
 Tested up to: 7.0
 Stable tag: 1.0.0
@@ -23,6 +23,7 @@ This plugin provides Infomaniak AI integration for the PHP AI Client SDK. It ena
 * Async batch operations (status polling + result download)
 * JSON structured output support
 * Function calling support
+* Conversation memory with automatic compaction for long conversations
 * Usage tracking with per-preset cost attribution
 * Automatic provider registration
 * Models hosted in Switzerland for data sovereignty
@@ -42,7 +43,7 @@ See the [GitHub README](https://github.com/MarJC5/ai-provider-for-infomaniak) fo
 
 **Requirements:**
 
-* PHP 7.4 or higher
+* PHP 8.0 or higher
 * For WordPress 6.9, the [wordpress/php-ai-client](https://github.com/WordPress/php-ai-client) package must be installed
 * For WordPress 7.0 and above, no additional changes are required
 * An Infomaniak account with an AI Tools product
@@ -103,4 +104,7 @@ Yes. Extend `WordPress\InfomaniakAiProvider\Presets\BasePreset` from any plugin.
 * System prompt templates (content editor, SEO expert, accessibility)
 * Auto-detection of plugin root for cross-plugin preset support
 * Auto-registration as WordPress Abilities (REST API + MCP)
+* Conversation memory system with per-user, per-conversation history
+* Memory compaction via `CompactingStrategy` (background summarization, zero latency)
+* Usage tracking with real token counts from the SDK
 * Extensible via `infomaniak_ai_presets` filter

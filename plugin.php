@@ -21,6 +21,7 @@ namespace WordPress\InfomaniakAiProvider;
 
 use WordPress\AiClient\AiClient;
 use WordPress\InfomaniakAiProvider\Provider\InfomaniakProvider;
+use WordPress\InfomaniakAiProvider\Memory\MemorySchema;
 use WordPress\InfomaniakAiProvider\Usage\UsageSchema;
 use WordPress\InfomaniakAiProvider\Usage\UsageTracker;
 
@@ -30,8 +31,9 @@ if (!defined('ABSPATH')) {
 
 require_once __DIR__ . '/src/autoload.php';
 
-// Create the usage tracking table on plugin activation.
+// Create database tables on plugin activation.
 register_activation_hook(__FILE__, [UsageSchema::class, 'install']);
+register_activation_hook(__FILE__, [MemorySchema::class, 'install']);
 
 /**
  * Upgrades the usage table schema if needed and starts usage tracking.
@@ -45,6 +47,18 @@ function init_usage_tracking(): void
 }
 
 add_action('init', __NAMESPACE__ . '\\init_usage_tracking');
+
+/**
+ * Upgrades the memory table schema if needed.
+ *
+ * @since 1.0.0
+ */
+function init_memory(): void
+{
+    MemorySchema::maybeUpgrade();
+}
+
+add_action('init', __NAMESPACE__ . '\\init_memory');
 
 /**
  * Loads the plugin text domain for translations.

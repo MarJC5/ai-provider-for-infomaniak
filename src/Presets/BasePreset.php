@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace WordPress\InfomaniakAiProvider\Presets;
 
+use WordPress\AiClient\AiClient;
+use WordPress\InfomaniakAiProvider\Memory\CompactingStrategy;
+use WordPress\InfomaniakAiProvider\Memory\MemoryStore;
+use WordPress\InfomaniakAiProvider\Memory\MemoryStrategy;
+use WordPress\InfomaniakAiProvider\Memory\SlidingWindowStrategy;
 use WordPress\InfomaniakAiProvider\Usage\UsageTracker;
 
 /**
@@ -233,6 +238,69 @@ abstract class BasePreset
     }
 
     /**
+     * Whether this preset supports multi-turn conversation.
+     *
+     * Override to return true to enable automatic history loading and storage.
+     * When true, execute() will accept an optional 'conversation_id' in the input,
+     * load prior messages via withHistory(), and store the new turn after generation.
+     *
+     * @since 1.0.0
+     *
+     * @return bool
+     */
+    protected function conversational(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Maximum number of history messages to include in the context.
+     *
+     * Only relevant when conversational() returns true.
+     *
+     * @since 1.0.0
+     *
+     * @return int
+     */
+    protected function historySize(): int
+    {
+        return 20;
+    }
+
+    /**
+     * Returns the memory strategy to use for loading history.
+     *
+     * Override to use a custom strategy (e.g., summarization).
+     *
+     * @since 1.0.0
+     *
+     * @return MemoryStrategy
+     */
+    protected function memoryStrategy(): MemoryStrategy
+    {
+        return new SlidingWindowStrategy();
+    }
+
+    /**
+     * Returns the JSON Schema properties for conversational input fields.
+     *
+     * Child presets can merge this into their inputSchema() when conversational.
+     *
+     * @since 1.0.0
+     *
+     * @return array
+     */
+    protected function conversationalInputProperties(): array
+    {
+        return [
+            'conversation_id' => [
+                'type' => 'string',
+                'description' => __('Conversation identifier. Auto-generated if omitted.', 'ai-provider-for-infomaniak'),
+            ],
+        ];
+    }
+
+    /**
      * Renders a PHP template file with the given data.
      *
      * Uses a static closure to isolate the template scope, preventing
@@ -376,7 +444,7 @@ abstract class BasePreset
      */
     public function execute(array $input)
     {
-        if (!function_exists('wp_ai_client_prompt')) {
+        if (!class_exists(AiClient::class)) {
             return new \WP_Error(
                 'ai_unavailable',
                 __('AI Client is not available.', 'ai-provider-for-infomaniak')
@@ -386,6 +454,16 @@ abstract class BasePreset
         $this->setTrackingContext();
 
         try {
+            // Resolve conversation context.
+            $isConversational = $this->conversational();
+            $conversationId = null;
+
+            if ($isConversational) {
+                $conversationId = !empty($input['conversation_id'])
+                    ? sanitize_text_field($input['conversation_id'])
+                    : MemoryStore::generateId();
+            }
+
             $data = $this->templateData($input);
 
             // Render user prompt template.
@@ -401,15 +479,16 @@ abstract class BasePreset
                 );
             }
 
-            // Build the prompt.
-            $builder = wp_ai_client_prompt($promptText)
-                ->using_provider($this->provider())
-                ->using_temperature($this->temperature())
-                ->using_max_tokens($this->maxTokens());
+            // Build the prompt via AiClient::prompt() which correctly
+            // passes the event dispatcher for usage tracking hooks.
+            $builder = AiClient::prompt($promptText)
+                ->usingProvider($this->provider())
+                ->usingTemperature($this->temperature())
+                ->usingMaxTokens($this->maxTokens());
 
             $modelPref = $this->modelPreference();
             if ($modelPref !== null) {
-                $builder->using_model_preference($modelPref);
+                $builder->usingModelPreference($modelPref);
             }
 
             // Add system instruction if defined.
@@ -420,20 +499,61 @@ abstract class BasePreset
                     $data
                 );
                 if (!empty($systemText)) {
-                    $builder->using_system_instruction($systemText);
+                    $builder->usingSystemInstruction($systemText);
+                }
+            }
+
+            // Inject conversation history.
+            if ($isConversational && $conversationId !== null) {
+                $historyMessages = $this->memoryStrategy()->loadMessages(
+                    $conversationId,
+                    $this->historySize(),
+                    get_current_user_id()
+                );
+
+                if (!empty($historyMessages)) {
+                    $builder->withHistory(...$historyMessages);
                 }
             }
 
             // Configure JSON output if schema is defined.
             $outputSchema = $this->outputSchema();
             if ($outputSchema !== null) {
-                $builder->as_json_response($outputSchema);
+                $builder->asJsonResponse($outputSchema);
             }
 
-            $result = $builder->generate_text();
+            try {
+                $result = $builder->generateText();
+            } catch (\Throwable $e) {
+                return new \WP_Error(
+                    'ai_generation_error',
+                    $e->getMessage()
+                );
+            }
 
-            if (is_wp_error($result)) {
-                return $result;
+            // Read real token usage from the SDK (populated by UsageTracker hook).
+            $lastUsage = class_exists(UsageTracker::class)
+                ? UsageTracker::getLastTokenUsage()
+                : null;
+
+            // Store conversation turn with real token counts.
+            if ($isConversational && $conversationId !== null) {
+                $memoryContext = [
+                    'user_id' => get_current_user_id(),
+                    'preset_name' => $this->name(),
+                    'token_count' => $lastUsage['prompt_tokens'] ?? 0,
+                ];
+
+                MemoryStore::storeMessage($conversationId, 'user', $promptText, $memoryContext);
+
+                $memoryContext['token_count'] = $lastUsage['completion_tokens'] ?? 0;
+                MemoryStore::storeMessage($conversationId, 'model', (string) $result, $memoryContext);
+
+                // Let strategy decide if compaction should be scheduled.
+                $strategy = $this->memoryStrategy();
+                if ($strategy instanceof CompactingStrategy) {
+                    $strategy->maybeScheduleCompaction($conversationId, get_current_user_id());
+                }
             }
 
             // Decode JSON responses.
@@ -445,7 +565,14 @@ abstract class BasePreset
                         sprintf('Failed to decode AI response as JSON: %s', json_last_error_msg())
                     );
                 }
+                if ($isConversational && $conversationId !== null) {
+                    return ['conversation_id' => $conversationId, 'result' => $decoded];
+                }
                 return $decoded;
+            }
+
+            if ($isConversational && $conversationId !== null) {
+                return ['conversation_id' => $conversationId, 'result' => $result];
             }
 
             return $result;

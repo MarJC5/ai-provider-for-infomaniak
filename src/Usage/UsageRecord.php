@@ -11,7 +11,7 @@ namespace WordPress\InfomaniakAiProvider\Usage;
  */
 class UsageRecord
 {
-    /** @var int */
+    /** @var string */
     private $id;
 
     /** @var int */
@@ -61,7 +61,7 @@ class UsageRecord
         $data = (array) $data;
 
         $record = new self();
-        $record->id = (int) ($data['id'] ?? 0);
+        $record->id = (string) ($data['id'] ?? '');
         $record->userId = (int) ($data['user_id'] ?? 0);
         $record->providerId = (string) ($data['provider_id'] ?? '');
         $record->modelId = (string) ($data['model_id'] ?? '');
@@ -76,7 +76,7 @@ class UsageRecord
         return $record;
     }
 
-    public function id(): int
+    public function id(): string
     {
         return $this->id;
     }

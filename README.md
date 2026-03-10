@@ -4,7 +4,7 @@ An unofficial AI Provider for [Infomaniak AI Tools](https://www.infomaniak.com/e
 
 > **Note:** This plugin is not officially maintained by Infomaniak. It is developed independently by a partner developer.
 
-Provides access to open-source models hosted in Switzerland via Infomaniak's OpenAI-compatible API. Supports text generation, image generation, function calling, async batch operations, and usage tracking with per-preset cost attribution.
+Provides access to open-source models hosted in Switzerland via Infomaniak's OpenAI-compatible API. Supports text generation, image generation, function calling, conversation memory with automatic compaction, and usage tracking with per-preset cost attribution.
 
 ## Requirements
 
@@ -57,31 +57,31 @@ You can obtain your API key from the [Infomaniak Manager](https://manager.infoma
 The provider automatically registers itself with the PHP AI Client on the `init` hook. Simply ensure both plugins are active and configure your credentials:
 
 ```php
+use WordPress\AiClient\AiClient;
+
 // Use the provider (auto-detected)
-$result = wp_ai_client_prompt( 'Hello, world!' )
-    ->using_temperature( 0.7 )
-    ->generate_text();
+$result = AiClient::prompt( 'Hello, world!' )
+    ->usingTemperature( 0.7 )
+    ->generateText();
 
 // Force the Infomaniak provider
-$result = wp_ai_client_prompt( 'Explain quantum computing' )
-    ->using_provider( 'infomaniak' )
-    ->generate_text();
+$result = AiClient::prompt( 'Explain quantum computing' )
+    ->usingProvider( 'infomaniak' )
+    ->generateText();
 
 // Use a specific model
-$result = wp_ai_client_prompt( 'Write a haiku' )
-    ->using_provider( 'infomaniak' )
-    ->using_model_preference( 'llama3' )
-    ->generate_text();
+$result = AiClient::prompt( 'Write a haiku' )
+    ->usingProvider( 'infomaniak' )
+    ->usingModelPreference( 'llama3' )
+    ->generateText();
 
 // Generate an image
-$file = wp_ai_client_prompt( 'A mountain landscape at sunset' )
-    ->using_provider( 'infomaniak' )
-    ->generate_image();
+$file = AiClient::prompt( 'A mountain landscape at sunset' )
+    ->usingProvider( 'infomaniak' )
+    ->generateImage();
 
-if ( ! is_wp_error( $file ) ) {
-    $dataUri  = $file->getDataUri();   // data:image/png;base64,...
-    $mimeType = $file->getMimeType();  // image/png
-}
+$dataUri  = $file->getDataUri();   // data:image/png;base64,...
+$mimeType = $file->getMimeType();  // image/png
 ```
 
 
@@ -155,8 +155,8 @@ The preset is now available as:
 - **PHP templates** -- Prompts are `.php` files rendered with `extract()`. Variables come from `templateData()`, which you can override to transform or enrich input.
 - **System prompts** -- Optional `.php` files in a `system/` subdirectory set the AI persona (content editor, SEO expert, etc.).
 - **Auto-detection** -- `BasePreset` finds templates relative to your plugin root automatically via `ReflectionClass`. No path configuration needed.
-- **Structured output** -- Override `outputSchema()` to return a JSON Schema and the preset will use `as_json_response()` and decode the result automatically.
-- **Image generation** -- Override `execute()` to call `generate_image()` instead of `generate_text()`. Use `ModelConfig` to set orientation and other image options. Override `modelType()` to return `'image'`.
+- **Structured output** -- Override `outputSchema()` to return a JSON Schema and the preset will use `asJsonResponse()` and decode the result automatically.
+- **Image generation** -- Override `execute()` to call `generateImage()` instead of `generateText()`. Use `ModelConfig` to set orientation and other image options. Override `modelType()` to return `'image'`.
 - **Model preference** -- Call `setModelPreference()` at runtime to override the model, or override `modelPreference()` for a default.
 - **Provider override** -- Override `provider()` to use a different AI provider (defaults to `'infomaniak'`).
 - **Extensible** -- Use the `infomaniak_ai_presets` filter to add or remove presets from any plugin.
@@ -183,7 +183,60 @@ See the [`examples/`](examples/) directory for complete, copy-paste-ready preset
 - **[basic-preset.php](examples/basic-preset.php)** -- Minimal preset with a prompt template and system instruction
 - **[json-output-preset.php](examples/json-output-preset.php)** -- Structured JSON output with `outputSchema()`
 - **[post-aware-preset.php](examples/post-aware-preset.php)** -- Fetches WordPress post data via `templateData()` and validates with a custom `execute()` override
-- **[image-preset.php](examples/image-preset.php)** -- Image generation with a custom `execute()` override using `generate_image()` and `ModelConfig`
+- **[image-preset.php](examples/image-preset.php)** -- Image generation with a custom `execute()` override using `generateImage()` and `ModelConfig`
+- **[conversational-preset.php](examples/conversational-preset.php)** -- Multi-turn chat with conversation memory and optional compaction
+
+## Conversation Memory
+
+Presets that return `true` from `conversational()` automatically store and load conversation history. Messages are stored in a dedicated database table (`wp_infomaniak_ai_memory`) and injected into subsequent turns via the SDK's `withHistory()`.
+
+### Basic conversational preset
+
+```php
+class ChatPreset extends BasePreset
+{
+    protected function conversational(): bool { return true; }
+    protected function historySize(): int { return 30; }
+    // ...
+}
+```
+
+The preset returns `['conversation_id' => '...', 'result' => '...']`. Pass the `conversation_id` back on subsequent calls to continue the conversation.
+
+### Memory compaction
+
+For long conversations, the `CompactingStrategy` automatically summarizes old messages when token usage exceeds a threshold. Compaction runs in the background via the `shutdown` hook -- zero latency for the user.
+
+```php
+use WordPress\InfomaniakAiProvider\Memory\CompactingStrategy;
+use WordPress\InfomaniakAiProvider\Memory\MemoryStrategy;
+
+class ChatPreset extends BasePreset
+{
+    protected function conversational(): bool { return true; }
+
+    protected function memoryStrategy(): MemoryStrategy
+    {
+        return new CompactingStrategy(
+            tokenBudget: 16000,         // Max token budget for history
+            compactionThreshold: 0.8,   // Compact at 80% of budget
+            recentKeepCount: 6,         // Keep 6 recent messages intact
+            summaryMaxTokens: 300,      // Max tokens for the summary
+        );
+    }
+}
+```
+
+How it works:
+1. After each turn, checks token usage via a single SQL `SUM` query
+2. If over 80% of budget, schedules compaction via the `shutdown` hook
+3. Compaction runs after the HTTP response is sent (zero user latency)
+4. Old messages are summarized into a single `summary` record
+5. Next turn loads: `[summary] + [recent messages]` -- fast, no AI call
+
+Hooks:
+- `infomaniak_ai_memory_before_compact` (filter) -- return `false` to cancel compaction
+- `infomaniak_ai_memory_compacted` (action) -- fires after compaction completes
 
 ## Supported Models
 

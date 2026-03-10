@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace WordPress\InfomaniakAiProvider\Usage;
+namespace WordPress\InfomaniakAiProvider\Memory;
 
 /**
- * Handles database table creation and schema versioning for usage tracking.
+ * Handles database table creation and schema versioning for conversation memory.
  *
  * @since 1.0.0
  */
-class UsageSchema
+class MemorySchema
 {
     /**
      * Current schema version.
@@ -23,7 +23,7 @@ class UsageSchema
      *
      * @var string
      */
-    private const VERSION_OPTION = 'infomaniak_ai_usage_db_version';
+    private const VERSION_OPTION = 'infomaniak_ai_memory_db_version';
 
     /**
      * Returns the full table name including the WordPress prefix.
@@ -35,11 +35,11 @@ class UsageSchema
     public static function tableName(): string
     {
         global $wpdb;
-        return $wpdb->prefix . 'infomaniak_ai_usage';
+        return $wpdb->prefix . 'infomaniak_ai_memory';
     }
 
     /**
-     * Creates the usage table if it does not exist.
+     * Creates the memory table if it does not exist.
      *
      * Called on plugin activation.
      *
@@ -54,22 +54,19 @@ class UsageSchema
 
         $sql = "CREATE TABLE {$table} (
             id varchar(36) NOT NULL,
+            conversation_id varchar(36) NOT NULL,
             user_id bigint(20) unsigned NOT NULL DEFAULT 0,
-            provider_id varchar(100) NOT NULL DEFAULT '',
-            model_id varchar(255) NOT NULL DEFAULT '',
-            model_name varchar(255) NOT NULL DEFAULT '',
-            preset_name varchar(255) DEFAULT NULL,
-            prompt_tokens int unsigned NOT NULL DEFAULT 0,
-            completion_tokens int unsigned NOT NULL DEFAULT 0,
-            total_tokens int unsigned NOT NULL DEFAULT 0,
-            capability varchar(100) NOT NULL DEFAULT '',
-            created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+            preset_name varchar(255) NOT NULL DEFAULT '',
+            role varchar(20) NOT NULL DEFAULT '',
+            content longtext NOT NULL,
+            token_count int unsigned NOT NULL DEFAULT 0,
+            metadata text DEFAULT NULL,
+            created_at datetime(6) NOT NULL DEFAULT '0000-00-00 00:00:00.000000',
             PRIMARY KEY  (id),
+            KEY conversation_id (conversation_id),
             KEY user_id (user_id),
-            KEY provider_id (provider_id),
-            KEY preset_name (preset_name),
-            KEY created_at (created_at),
-            KEY user_created (user_id, created_at)
+            KEY conv_created (conversation_id, created_at),
+            KEY user_conv (user_id, conversation_id)
         ) {$charset};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';

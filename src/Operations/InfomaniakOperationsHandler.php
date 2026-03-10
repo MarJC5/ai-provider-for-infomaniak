@@ -205,7 +205,7 @@ class InfomaniakOperationsHandler implements
             $headers
         );
 
-        $request = $this->getRequestAuthentication()->authenticate($request);
+        $request = $this->getRequestAuthentication()->authenticateRequest($request);
 
         return $this->getHttpTransporter()->send($request);
     }

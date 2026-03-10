@@ -4,7 +4,7 @@
  * Example: Image Generation Preset
  *
  * A preset that generates images instead of text. Demonstrates how to
- * override execute() to use generate_image() with ModelConfig for
+ * override execute() to use generateImage() with ModelConfig for
  * orientation control.
  *
  * Required file structure in your plugin:
@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace YourPlugin\Presets;
 
+use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Files\Enums\MediaOrientationEnum;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\InfomaniakAiProvider\Presets\BasePreset;
@@ -123,11 +124,11 @@ class ImageGeneratePreset extends BasePreset
     }
 
     /**
-     * Override execute() to use generate_image() instead of generate_text().
+     * Override execute() to use generateImage() instead of generateText().
      *
      * Image generation requires:
      * 1. A ModelConfig to set orientation (square, landscape, portrait)
-     * 2. Calling generate_image() instead of generate_text()
+     * 2. Calling generateImage() instead of generateText()
      * 3. Extracting the data URI and MIME type from the returned File DTO
      *
      * The tracking context (setTrackingContext/clearTrackingContext) ensures
@@ -135,7 +136,7 @@ class ImageGeneratePreset extends BasePreset
      */
     public function execute(array $input)
     {
-        if (!function_exists('wp_ai_client_prompt')) {
+        if (!class_exists(AiClient::class)) {
             return new \WP_Error(
                 'ai_unavailable',
                 __('AI Client is not available.', 'your-plugin')
@@ -170,19 +171,22 @@ class ImageGeneratePreset extends BasePreset
             $config = new ModelConfig();
             $config->setOutputMediaOrientation($orientationEnum);
 
-            $builder = wp_ai_client_prompt($promptText)
-                ->using_provider($this->provider())
-                ->using_model_config($config);
+            $builder = AiClient::prompt($promptText)
+                ->usingProvider($this->provider())
+                ->usingModelConfig($config);
 
             $modelPref = $this->modelPreference();
             if ($modelPref !== null) {
-                $builder->using_model_preference($modelPref);
+                $builder->usingModelPreference($modelPref);
             }
 
-            $file = $builder->generate_image();
-
-            if (is_wp_error($file)) {
-                return $file;
+            try {
+                $file = $builder->generateImage();
+            } catch (\Throwable $e) {
+                return new \WP_Error(
+                    'ai_generation_error',
+                    $e->getMessage()
+                );
             }
 
             return [
