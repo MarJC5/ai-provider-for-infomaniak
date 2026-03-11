@@ -11,6 +11,7 @@ use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\DTO\UserMessage;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Results\DTO\GenerativeAiResult;
+use WordPress\AiClient\Files\DTO\File;
 use WordPress\AiClient\Tools\DTO\FunctionResponse;
 
 /**
@@ -133,7 +134,7 @@ class AgentLoop
             $messages[] = $modelMessage;
 
             // Extract and execute tool calls.
-            [$toolCalls, $toolResponses] = $this->executeToolCalls($modelMessage);
+            [$toolCalls, $toolResponses, $collectedFiles] = $this->executeToolCalls($modelMessage);
 
             $steps[] = new Step($iteration, $toolCalls, $toolResponses);
 
@@ -152,12 +153,50 @@ class AgentLoop
             $builder = $this->buildContinuation($declarations, $messages, $toolResponses);
             $result = $builder->generateTextResult();
             $this->accumulateTokens($totalTokens, $result);
+
+            // 4. If the model finished and tools returned images, send them
+            //    in a follow-up user message for visual analysis.
+            //    The API requires: tool → assistant → user (no user after tool).
+            //    If the follow-up fails (model doesn't support vision, image
+            //    too large, etc.), the text-based response is kept as fallback.
+            if (
+                !empty($collectedFiles)
+                && !$result->getCandidates()[0]->getFinishReason()->isToolCalls()
+                && $iteration < $this->maxIterations
+            ) {
+                try {
+                    // Add tool responses to history so the follow-up sees the
+                    // complete sequence: assistant(tool_calls) → tool(results) → assistant(text).
+                    $imageMessages = $messages;
+                    foreach ($toolResponses as $response) {
+                        $imageMessages[] = new UserMessage([new MessagePart($response)]);
+                    }
+                    $imageMessages[] = $result->toMessage();
+
+                    $builder = $this->buildImageFollowUp($collectedFiles, $declarations, $imageMessages);
+                    $imageResult = $builder->generateTextResult();
+                    $this->accumulateTokens($totalTokens, $imageResult);
+
+                    // Only use the vision result if it has text content.
+                    $imageResult->toText();
+                    $result = $imageResult;
+                    $messages = $imageMessages;
+                } catch (\Throwable $e) {
+                    // Vision not available — keep the text-based result.
+                }
+            }
         }
 
         $finishReason = $result->getCandidates()[0]->getFinishReason()->value;
 
+        try {
+            $text = $result->toText();
+        } catch (\Throwable $e) {
+            $text = '';
+        }
+
         return new AgentResult(
-            text: $result->toText(),
+            text: $text,
             steps: $steps,
             iterationCount: $iteration,
             totalTokenUsage: $totalTokens,
@@ -169,17 +208,20 @@ class AgentLoop
      * Extracts and executes tool calls from a model message.
      *
      * Each tool is executed via the ToolRegistry. Exceptions are caught
-     * and returned as error responses to the model.
+     * and returned as error responses to the model. Image files returned
+     * via the `_files` convention are extracted separately for multimodal
+     * processing in a follow-up user turn.
      *
      * @since 1.0.0
      *
      * @param Message $modelMessage The model's response message containing tool calls.
-     * @return array{0: FunctionCall[], 1: FunctionResponse[]}
+     * @return array{0: FunctionCall[], 1: FunctionResponse[], 2: File[]}
      */
     private function executeToolCalls(Message $modelMessage): array
     {
         $toolCalls = [];
         $toolResponses = [];
+        $collectedFiles = [];
 
         foreach ($modelMessage->getParts() as $part) {
             if (!$part->getType()->isFunctionCall()) {
@@ -206,6 +248,24 @@ class AgentLoop
              */
             do_action('infomaniak_ai_agent_tool_called', $call, $toolResult, $this);
 
+            // Extract _files paths as File objects for multimodal support.
+            // Files are NOT kept in the tool result — they will be sent
+            // in a follow-up user message after the model processes
+            // the text-only tool results.
+            if (is_array($toolResult) && isset($toolResult['_files'])) {
+                foreach ($toolResult['_files'] as $filePath) {
+                    try {
+                        $file = new File($filePath);
+                        if ($file->isImage()) {
+                            $collectedFiles[] = $file;
+                        }
+                    } catch (\Throwable $e) {
+                        // Skip invalid files silently.
+                    }
+                }
+                unset($toolResult['_files']);
+            }
+
             $toolResponses[] = new FunctionResponse(
                 $call->getId(),
                 $call->getName(),
@@ -213,7 +273,7 @@ class AgentLoop
             );
         }
 
-        return [$toolCalls, $toolResponses];
+        return [$toolCalls, $toolResponses, $collectedFiles];
     }
 
     /**
@@ -282,6 +342,48 @@ class AgentLoop
 
         foreach ($toolResponses as $response) {
             $builder->withFunctionResponse($response);
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Builds a follow-up prompt with images for visual analysis.
+     *
+     * Called after the model has responded to text-only tool results.
+     * Sends the actual image files in a user message so the vision
+     * model can analyze them visually.
+     *
+     * @since 1.1.0
+     *
+     * @param File[]                $files        Image files to send.
+     * @param FunctionDeclaration[] $declarations Tool declarations.
+     * @param Message[]             $messages     Full conversation history.
+     * @return PromptBuilder
+     */
+    private function buildImageFollowUp(array $files, array $declarations, array $messages): PromptBuilder
+    {
+        $requestOptions = new RequestOptions();
+        $requestOptions->setTimeout($this->requestTimeout);
+
+        $builder = AiClient::prompt('The images from the previous tool results are attached below. Use your vision capabilities to analyze them and continue your task.')
+            ->usingProvider($this->provider)
+            ->usingTemperature($this->temperature)
+            ->usingMaxTokens($this->maxTokens)
+            ->usingFunctionDeclarations(...$declarations)
+            ->usingRequestOptions($requestOptions)
+            ->withHistory(...$messages);
+
+        if ($this->modelPreference !== null) {
+            $builder->usingModelPreference($this->modelPreference);
+        }
+
+        if ($this->systemInstruction !== null) {
+            $builder->usingSystemInstruction($this->systemInstruction);
+        }
+
+        foreach ($files as $file) {
+            $builder->withFile($file);
         }
 
         return $builder;

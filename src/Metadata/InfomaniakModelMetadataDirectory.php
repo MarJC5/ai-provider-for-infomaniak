@@ -104,7 +104,7 @@ class InfomaniakModelMetadataDirectory extends AbstractOpenAiCompatibleModelMeta
             new SupportedOption(OptionEnum::customOptions()),
             new SupportedOption(
                 OptionEnum::inputModalities(),
-                [[ModalityEnum::text()]]
+                [[ModalityEnum::text()], [ModalityEnum::text(), ModalityEnum::image()]]
             ),
             new SupportedOption(
                 OptionEnum::outputModalities(),
